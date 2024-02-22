@@ -340,7 +340,7 @@
 			isa = PBXProject;
 			attributes = {
 				LastSwiftUpdateCheck = 0730;
-				LastUpgradeCheck = 0820;
+				LastUpgradeCheck = 1520;
 				ORGANIZATIONNAME = smumryak;
 				TargetAttributes = {
 					AFF75A231C37279600F450AC = {
@@ -357,6 +357,7 @@
 			developmentRegion = English;
 			hasScannedForEncodings = 0;
 			knownRegions = (
+				English,
 				en,
 			);
 			mainGroup = B423AE101C0DF76A0004A2F1;
