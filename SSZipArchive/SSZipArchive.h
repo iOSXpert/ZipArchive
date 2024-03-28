@@ -20,6 +20,8 @@ typedef NS_ENUM(NSInteger, SSZipArchiveErrorCode) {
     SSZipArchiveErrorCodeFailedOpenFileInZip    = -2,
     SSZipArchiveErrorCodeFileInfoNotLoadable    = -3,
     SSZipArchiveErrorCodeFileContentNotReadable = -4,
+    SSZipArchiveErrorCodeFailedToWriteFile      = -5,
+    SSZipArchiveErrorCodeInvalidArguments       = -6,
 };
 
 @protocol SSZipArchiveDelegate;

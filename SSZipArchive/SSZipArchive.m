@@ -184,12 +184,28 @@ NSString *const SSZipArchiveErrorDomain = @"SSZipArchiveErrorDomain";
           toDestination:(NSString *)destination
      preserveAttributes:(BOOL)preserveAttributes
               overwrite:(BOOL)overwrite
-               password:(NSString *)password
+               password:(nullable NSString *)password
                   error:(NSError **)error
                delegate:(id<SSZipArchiveDelegate>)delegate
         progressHandler:(void (^)(NSString *entry, unz_file_info zipInfo, long entryNumber, long total))progressHandler
       completionHandler:(void (^)(NSString *path, BOOL succeeded, NSError * __nullable error))completionHandler
 {
+    
+    // Guard against empty strings
+    if ([path length] == 0 || [destination length] == 0)
+    {
+        NSDictionary *userInfo = @{NSLocalizedDescriptionKey: @"received invalid argument(s)"};
+        NSError *err = [NSError errorWithDomain:SSZipArchiveErrorDomain code:SSZipArchiveErrorCodeInvalidArguments userInfo:userInfo];
+        if (error)
+        {
+            *error = err;
+        }
+        if (completionHandler)
+        {
+            completionHandler(nil, NO, err);
+        }
+    }
+    
     // Begin opening
     zipFile zip = unzOpen((const char*)[path fileSystemRepresentation]);
     if (zip == NULL)
@@ -383,7 +399,15 @@ NSString *const SSZipArchiveErrorDomain = @"SSZipArchiveErrorDomain";
                     FILE *fp = fopen((const char*)[fullPath fileSystemRepresentation], "wb");
                     while (fp) {
                         if (readBytes > 0) {
-                            fwrite(buffer, readBytes, 1, fp);
+                            if (0 == fwrite(buffer, readBytes, 1, fp)) {
+                                if (ferror(fp)) {
+                                    NSString *message = [NSString stringWithFormat:@"Failed to write file (check your free space)"];
+                                    NSLog(@"[SSZipArchive] %@", message);
+                                    success = NO;
+                                    unzippingError = [NSError errorWithDomain:@"SSZipArchiveErrorDomain" code:SSZipArchiveErrorCodeFailedToWriteFile userInfo:@{NSLocalizedDescriptionKey: message}];
+                                    break;
+                                }
+                            }
                         } else {
                             break;
                         }
@@ -432,10 +456,6 @@ NSString *const SSZipArchiveErrorDomain = @"SSZipArchiveErrorDomain";
                                     // Unable to set the permissions attribute
                                     NSLog(@"[SSZipArchive] Failed to set attributes - whilst setting permissions");
                                 }
-
-#if !__has_feature(objc_arc)
-                                [attrs release];
-#endif
                             }
                         }
                     }
@@ -519,7 +539,7 @@ NSString *const SSZipArchiveErrorDomain = @"SSZipArchiveErrorDomain";
                 progressHandler(strPath, fileInfo, currentFileNumber, globalInfo.number_entry);
             }
         }
-    } while (ret == UNZ_OK && ret != UNZ_END_OF_LIST_OF_FILE);
+    } while (ret == UNZ_OK && YES == success);
     
     // Close
     unzClose(zip);
@@ -537,9 +557,6 @@ NSString *const SSZipArchiveErrorDomain = @"SSZipArchiveErrorDomain";
                 NSLog(@"[SSZipArchive] Error setting directory file modification date attribute: %@",err.localizedDescription);
             }
         }
-#if !__has_feature(objc_arc)
-        [directoriesModificationDates release];
-#endif
     }
     
     // Message delegate
@@ -602,11 +619,6 @@ NSString *const SSZipArchiveErrorDomain = @"SSZipArchiveErrorDomain";
         }
         success = [zipArchive close];
     }
-    
-#if !__has_feature(objc_arc)
-    [zipArchive release];
-#endif
-    
     return success;
 }
 
@@ -666,12 +678,6 @@ NSString *const SSZipArchiveErrorDomain = @"SSZipArchiveErrorDomain";
         }
         success = [zipArchive close];
     }
-    
-#if !__has_feature(objc_arc)
-    [fileManager release];
-    [zipArchive release];
-#endif
-    
     return success;
 }
 
@@ -683,15 +689,6 @@ NSString *const SSZipArchiveErrorDomain = @"SSZipArchiveErrorDomain";
     }
     return self;
 }
-
-
-#if !__has_feature(objc_arc)
-- (void)dealloc
-{
-    [_path release];
-    [super dealloc];
-}
-#endif
 
 
 - (BOOL)open
@@ -925,11 +922,6 @@ NSString *const SSZipArchiveErrorDomain = @"SSZipArchiveErrorDomain";
     [components setSecond:(msdosDateTime & kSecondMask) * 2];
     
     NSDate *date = [NSDate dateWithTimeInterval:0 sinceDate:[gregorian dateFromComponents:components]];
-    
-#if !__has_feature(objc_arc)
-    [components release];
-#endif
-    
     return date;
 }
 
